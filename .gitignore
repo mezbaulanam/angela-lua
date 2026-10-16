@@ -1,0 +1,4 @@
+*.rock
+*.o
+*.so
+.DS_Store
