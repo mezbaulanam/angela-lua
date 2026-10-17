@@ -39,3 +39,4 @@ jobs:
         run: |
           ROCK_FILE=$(ls *.rockspec | head -n 1)
           luarocks upload "$ROCK_FILE" --api-key="${{ secrets.LUAROCKS_API_KEY }}"
+
