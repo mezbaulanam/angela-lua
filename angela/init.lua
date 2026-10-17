@@ -8,7 +8,7 @@ local game = require("angela.game")
 local json = require("angela.json")
 
 local angela = {
-  _VERSION = "0.1.0",
+  _VERSION = "0.2.0",
 
   -- Core Application & Routing
   Game = game.Game,

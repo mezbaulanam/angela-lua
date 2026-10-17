@@ -193,14 +193,20 @@ test("UI context renders components, modals, and embeds", function()
   embed:add_field("Field 1", "Val 1", true)
   ctx.ui:render_embed(embed)
 
+  -- Public chat delivery (send_chat / NEW_MESSAGE)
+  ctx.ui:send_chat("Public Chat Announcement")
+
   local res = ctx:to_response()
-  assert_eq(#res.intents, 5)
+  assert_eq(#res.intents, 6)
   assert_eq(res.intents[1].op, "UI_RENDER")
   assert_eq(res.intents[1].mode, "AUTO")
   assert_eq(res.intents[2].target, "REPLY_EPHEMERAL")
   assert_eq(res.intents[3].op, "UI_MODAL")
   assert_eq(res.intents[4].mode, "CV2")
   assert_eq(res.intents[5].mode, "CLASSIC_EMBED")
+  assert_eq(res.intents[6].op, "UI_RENDER")
+  assert_eq(res.intents[6].target, "NEW_MESSAGE")
+  assert_eq(res.intents[6].ephemeral, false)
 end)
 
 -- 6. Canvas Engine

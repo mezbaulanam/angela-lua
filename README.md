@@ -440,6 +440,33 @@ game:on_modal("wager_submitted", function(ctx)
 end)
 ```
 
+### Public Chat Delivery (`send_chat` vs `EDIT_MAIN`)
+
+By default, games edit the existing game message (`target = "EDIT_MAIN"`). This keeps card tables, boards, and casino wheels compact without spamming Discord channels.
+
+For games that announce new rounds, post trivia questions, or announce server-wide events, use `ctx.ui:send_chat(...)` or set `target = "NEW_MESSAGE"`:
+
+```lua
+-- Helper: sends a brand new public message to the channel
+ctx.ui:send_chat({
+  title = "🧠 Trivia Round 1",
+  text = "What is the capital of Peru?",
+  buttons = {
+    Button.new({ custom_id = "ans_lima", label = "Lima", style = "primary" }),
+    Button.new({ custom_id = "ans_bogota", label = "Bogota", style = "secondary" }),
+  }
+})
+
+-- Or using string shorthand:
+ctx.ui:send_chat("⚔️ The world boss has awakened! Click below to join the raid!")
+```
+
+| Method / Target | Visibility | Replaces Previous? | Best Used For |
+|---|---|---|---|
+| `target = "EDIT_MAIN"` (Default) | Public | Yes (Edits main message) | Lobbies, boards, scoreboards, casino wheels |
+| `ctx.ui:send_chat(...)` / `target = "NEW_MESSAGE"` | Public | No (Sends new message) | Trivia rounds, event announcements, elimination logs |
+| `ctx.ui:reply_ephemeral(...)` | Only Clicker | No (Private reply) | Secret hands, balance checks, validation errors |
+
 ---
 
 ## 2D Canvas Graphics Engine
@@ -581,15 +608,53 @@ ctx.media:search_gif("victory celebration", "on_gif_found")
 
 ---
 
-## HTTP & Discord Utilities
+## HTTP & Safe Network Access
 
-### Safe Outbound HTTP
+### Safe Outbound HTTP (`ctx.http:get` / `ctx.http:post`)
+
+Angela games execute inside a secure WebAssembly (WASM) sandbox. Because the sandbox **does not possess raw POSIX OS sockets**, synchronous network calls (such as `luasocket`, `socket.http`, or C-bindings) **cannot run** and will fail.
+
+All network requests must be requested through Angela's host-mediated **two-phase HTTP gateway**:
+1. **Phase 1 (Request)**: Your cartridge registers an intent via `ctx.http:get(url, headers, callback)`.
+2. **Phase 2 (Callback)**: Angela's host verifies SSRF policy, queries the API safely, and delivers parsed data to `ctx.args.callback_data`.
 
 ```lua
 game:on_command("trivia", function(ctx)
-  ctx.http:get("https://opentdb.com/api.php?amount=1&type=multiple", nil, "on_trivia_received")
+  -- Phase 1: Request data via host proxy
+  ctx.http:get("https://the-trivia-api.com/v2/questions?limit=1", nil, "on_trivia_received")
+end)
+
+game:on_callback("on_trivia_received", function(ctx)
+  -- Phase 2: Host delivers payload
+  local questions = ctx.args.callback_data
+  if questions and #questions > 0 then
+    local q = questions[1]
+    ctx.ui:send_chat({
+      title = "🧠 Question Time!",
+      text = q.question.text,
+      buttons = {
+        Button.new({ custom_id = "ans_correct", label = q.correctAnswer, style = "primary" }),
+        Button.new({ custom_id = "ans_wrong", label = q.incorrectAnswers[1], style = "secondary" }),
+      }
+    })
+  end
 end)
 ```
+
+---
+
+## Sandboxing & Dependency Constraints
+
+To guarantee zero latency spikes, airtight security, and deterministic runs across all Discord nodes:
+
+1. **Pure Lua Only**: Cartridges must use standard Lua built-ins (`string`, `table`, `math`, `os.time`, `os.difftime`).
+2. **No Native C/C++ Dynamic Libraries**: C-libraries (`.so` / `.dll`) or modules requiring system OS handles (`io.popen`, `os.execute`) are blocked in WASM.
+3. **Official SDK Only**: Only import `angela` (`angela-lua`). All interactions with Discord, player balances, inventory, and network go through `ctx`.
+4. **State Persistence**: Cartridges cannot write to local disk. State across turns is stored in `ctx.state` or `ctx.storage`.
+
+---
+
+## Discord Utilities
 
 ### Channel Management & Chat Listening
 

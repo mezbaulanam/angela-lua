@@ -320,6 +320,41 @@ function UIContext:reply_ephemeral(text, embed, container)
   })
 end
 
+function UIContext:send_chat(opts_or_text)
+  if type(opts_or_text) == "string" then
+    return self:render({
+      body_lines = { opts_or_text },
+      ephemeral = false,
+      target = "NEW_MESSAGE",
+    })
+  end
+  local opts = opts_or_text or {}
+  if opts.embed then
+    return self:render_embed(opts.embed, opts.buttons, false, "NEW_MESSAGE")
+  end
+  local body = {}
+  if opts.text then
+    body = { opts.text }
+  elseif opts.body_lines then
+    body = opts.body_lines
+  end
+  return self:render({
+    title = opts.title,
+    subtitle = opts.subtitle,
+    body_lines = body,
+    buttons = opts.buttons,
+    selects = opts.selects,
+    image = opts.image,
+    thumbnail = opts.thumbnail,
+    accent_color = opts.accent_color,
+    ephemeral = false,
+    target = "NEW_MESSAGE",
+  })
+end
+
+UIContext.send_message = UIContext.send_chat
+
+
 function UIContext:open_modal(title, inputs, callback_id)
   local serialized = {}
   if inputs then
