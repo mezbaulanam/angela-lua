@@ -1,0 +1,41 @@
+name: Publish to LuaRocks
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Lint, test, and publish to LuaRocks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Lua and LuaRocks
+        uses: hishamhm/gh-actions-lua@master
+        with:
+          luaVersion: "5.4"
+
+      - name: Set up LuaRocks
+        uses: hishamhm/gh-actions-luarocks@master
+
+      - name: Install test dependencies and run tests
+        run: |
+          lua tests/test_sdk.lua
+
+      - name: Install luarocks upload tools
+        run: |
+          luarocks install lua-cjson || true
+
+      - name: Upload to LuaRocks
+        run: |
+          ROCK_FILE=$(ls *.rockspec | head -n 1)
+          luarocks upload "$ROCK_FILE" --api-key="${{ secrets.LUAROCKS_API_KEY }}"
