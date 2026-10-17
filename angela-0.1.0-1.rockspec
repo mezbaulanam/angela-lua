@@ -3,6 +3,7 @@ version = "0.1.0-1"
 
 source = {
   url = "git+https://github.com/mezbaulanam/angela-lua.git",
+  tag = "v0.1.0",
 }
 
 description = {
