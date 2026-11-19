@@ -561,6 +561,124 @@ function StorageContext:set_cooldown(user_id, seconds)
   return intent
 end
 
+function StorageContext:record_stat(user_id, stat_key, value, mode)
+  local intent = {
+    op = "STORAGE_MUTATE",
+    action = "RECORD_STAT",
+    user_id = math.floor(tonumber(user_id) or 0),
+    stat_key = tostring(stat_key or ""),
+    value = math.floor(tonumber(value) or 1),
+    mode = tostring(mode or "inc"),
+  }
+  self._ctx:add_intent(intent)
+  return intent
+end
+
+-- ==================== ChannelContext ====================
+local ChannelContext = {}
+ChannelContext.__index = ChannelContext
+
+function ChannelContext.new(ctx)
+  local self = setmetatable({}, ChannelContext)
+  self._ctx = ctx
+  return self
+end
+
+function ChannelContext:create(name, channel_type, auto_delete_after, topic)
+  local intent = {
+    op = "CHANNEL_OP",
+    action = "CREATE",
+    name = tostring(name or "game-channel"),
+    type = tostring(channel_type or "private_thread"),
+  }
+  if auto_delete_after ~= nil then
+    intent.auto_delete_after = math.floor(tonumber(auto_delete_after) or 0)
+  end
+  if topic ~= nil and tostring(topic) ~= "" then
+    intent.topic = tostring(topic)
+  end
+  self._ctx:add_intent(intent)
+  return intent
+end
+
+function ChannelContext:delete(channel_id)
+  local intent = {
+    op = "CHANNEL_OP",
+    action = "DELETE",
+  }
+  if channel_id ~= nil then
+    intent.channel_id = math.floor(tonumber(channel_id) or 0)
+  end
+  self._ctx:add_intent(intent)
+  return intent
+end
+
+-- ==================== PermissionsContext ====================
+local PermissionsContext = {}
+PermissionsContext.__index = PermissionsContext
+
+function PermissionsContext.new(ctx)
+  local self = setmetatable({}, PermissionsContext)
+  self._ctx = ctx
+  return self
+end
+
+function PermissionsContext:set(user_or_role_id, allow, deny, channel_id)
+  local intent = {
+    op = "PERMISSION_OVERWRITE",
+    target_id = math.floor(tonumber(user_or_role_id) or 0),
+    allow = allow or {},
+    deny = deny or {},
+  }
+  if channel_id ~= nil then
+    intent.channel_id = math.floor(tonumber(channel_id) or 0)
+  end
+  self._ctx:add_intent(intent)
+  return intent
+end
+
+function PermissionsContext:lock_channel(duration_seconds, channel_id)
+  local intent = {
+    op = "PERMISSION_OVERWRITE",
+    target_id = 0,
+    deny = { "send_messages" },
+    duration_seconds = math.floor(tonumber(duration_seconds) or 30),
+  }
+  if channel_id ~= nil then
+    intent.channel_id = math.floor(tonumber(channel_id) or 0)
+  end
+  self._ctx:add_intent(intent)
+  return intent
+end
+
+-- ==================== TimerContext ====================
+local TimerContext = {}
+TimerContext.__index = TimerContext
+
+function TimerContext.new(ctx)
+  local self = setmetatable({}, TimerContext)
+  self._ctx = ctx
+  return self
+end
+
+function TimerContext:schedule(delay_seconds, callback_id, payload)
+  self._ctx:sleep(delay_seconds, callback_id)
+  if payload ~= nil then
+    self._ctx.state._timer_payload = payload
+  end
+end
+
+function TimerContext:cancel(session_id)
+  local intent = {
+    op = "TIMER_CANCEL",
+  }
+  if session_id ~= nil and tostring(session_id) ~= "" then
+    intent.session_id = tostring(session_id)
+  end
+  self._ctx:add_intent(intent)
+  return intent
+end
+
 -- ==================== Context ====================
 local Context = {}
 Context.__index = Context
@@ -598,6 +716,9 @@ function Context.new(raw_event)
   self.http = HTTPContext.new(self)
   self.discord = DiscordContext.new(self)
   self.storage = StorageContext.new(self)
+  self.channel = ChannelContext.new(self)
+  self.perms = PermissionsContext.new(self)
+  self.timer = TimerContext.new(self)
 
   -- host_id property
   if #self.session.participants > 0 then
@@ -663,6 +784,9 @@ context.MediaContext = MediaContext
 context.HTTPContext = HTTPContext
 context.DiscordContext = DiscordContext
 context.StorageContext = StorageContext
+context.ChannelContext = ChannelContext
+context.PermissionsContext = PermissionsContext
+context.TimerContext = TimerContext
 
 return context
 

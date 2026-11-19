@@ -8,7 +8,7 @@ local game = require("angela.game")
 local json = require("angela.json")
 
 local angela = {
-  _VERSION = "0.2.0",
+  _VERSION = "0.3.0",
 
   -- Core Application & Routing
   Game = game.Game,
@@ -17,6 +17,9 @@ local angela = {
   -- Context
   Context = context.Context,
   GameContext = context.Context,
+  ChannelContext = context.ChannelContext,
+  PermissionsContext = context.PermissionsContext,
+  TimerContext = context.TimerContext,
 
   -- UI Components
   Button = models.Button,

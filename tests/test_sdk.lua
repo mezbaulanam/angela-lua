@@ -301,5 +301,39 @@ test("Game routing works for command and button", function()
   assert_eq(res2.updated_state.step, "button_done")
 end)
 
+-- 9. Channel, Permissions, Timer, and Storage stats (v0.3.0 primitives)
+test("v0.3.0 low-level primitives generate valid intents", function()
+  local ctx = angela.Context.new(SAMPLE_EVENT)
+  ctx.storage:record_stat(ctx.user.id, "wins", 1)
+  ctx.channel:create("game-room", "private_thread", 300, "Secret Game")
+  ctx.channel:delete(12345)
+  ctx.perms:set(ctx.user.id, { "send_messages" }, { "view_channel" })
+  ctx.perms:lock_channel(45)
+  ctx.timer:schedule(15, "on_timer_wake", { stage = "night" })
+  ctx.timer:cancel()
+
+  local res = ctx:to_response()
+  assert_eq(res.status, "SLEEPING")
+  assert_eq(ctx.state._timer_payload.stage, "night")
+  assert_true(#res.intents >= 6, "must contain new intents")
+
+  local ops = {}
+  for _, it in ipairs(res.intents) do
+    table.insert(ops, it.op)
+  end
+
+  local function has_op(target)
+    for _, op in ipairs(ops) do
+      if op == target then return true end
+    end
+    return false
+  end
+
+  assert_true(has_op("STORAGE_MUTATE"), "must contain STORAGE_MUTATE")
+  assert_true(has_op("CHANNEL_OP"), "must contain CHANNEL_OP")
+  assert_true(has_op("PERMISSION_OVERWRITE"), "must contain PERMISSION_OVERWRITE")
+  assert_true(has_op("TIMER_CANCEL"), "must contain TIMER_CANCEL")
+end)
+
 print(string.format("\n==============================\nAll %d tests passed successfully!\n==============================", tests_passed))
 
